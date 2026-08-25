@@ -32,3 +32,12 @@ Le projet DCP utilise un Jenkinsfile versionné dans Git.
 - Publication des images dans Docker Hub
 - Déclenchement par scrutation SCM
 
+## Test du déclenchement automatique Jenkins
+
+Une modification envoyée sur la branche main déclenche automatiquement le pipeline Jenkins.
+
+Jenkins vérifie régulièrement le dépôt GitHub grâce à la scrutation SCM.
+
+Le pipeline construit les images Docker du backend et du frontend.
+
+Après la construction, Jenkins publie les images sur Docker Hub.
