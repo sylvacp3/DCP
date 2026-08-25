@@ -8,6 +8,11 @@ pipeline {
     environment {
         BACKEND_IMAGE = 'sylvano123/dcp-backend'
         FRONTEND_IMAGE = 'sylvano123/dcp-frontend'
+
+        POSTGRES_DB = 'dcp_materiel'
+        POSTGRES_USER = 'dcp_user'
+        JWT_EXPIRES_IN = '8h'
+        CLIENT_ORIGIN = 'http://127.0.0.1:8083'
     }
 
     stages {
@@ -17,6 +22,7 @@ pipeline {
                 sh 'git log -1 --oneline'
                 sh 'test -f dcp-backend/Dockerfile'
                 sh 'test -f dcp-frontend/Dockerfile'
+                sh 'test -f compose.prod.yaml'
             }
         }
 
@@ -54,6 +60,62 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploiement') {
+            steps {
+                withCredentials([
+                    string(
+                        credentialsId: 'dcp-postgres-password',
+                        variable: 'POSTGRES_PASSWORD'
+                    ),
+                    string(
+                        credentialsId: 'dcp-jwt-secret',
+                        variable: 'JWT_SECRET'
+                    )
+                ]) {
+                    sh '''
+                        export IMAGE_TAG="ci-${BUILD_NUMBER}"
+
+                        docker compose \
+                            -p dcp \
+                            -f compose.prod.yaml \
+                            pull
+
+                        docker compose \
+                            -p dcp \
+                            -f compose.prod.yaml \
+                            up -d --remove-orphans
+
+                        docker compose \
+                            -p dcp \
+                            -f compose.prod.yaml \
+                            ps
+                    '''
+                }
+            }
+        }
+
+        stage('Verification du deploiement') {
+            steps {
+                sh '''
+                    for tentative in 1 2 3 4 5 6
+                    do
+                        if curl --fail --silent http://localhost:8080/api/health
+                        then
+                            echo
+                            echo "API DCP operationnelle."
+                            exit 0
+                        fi
+
+                        echo "API indisponible, nouvelle tentative dans 5 secondes..."
+                        sleep 5
+                    done
+
+                    echo "Echec de la verification de l API."
+                    exit 1
+                '''
+            }
+        }
     }
 
     post {
@@ -62,11 +124,11 @@ pipeline {
         }
 
         success {
-            echo 'Les images DCP ont été construites et publiées avec succès.'
+            echo 'Les images DCP ont été construites, publiées et déployées avec succès.'
         }
 
         failure {
-            echo 'Le pipeline a rencontré une erreur.'
+            echo 'Le pipeline CI/CD a rencontré une erreur.'
         }
     }
 }
