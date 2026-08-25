@@ -23,3 +23,12 @@ Projet pratique : application DCP.
 
 \- `origin/main` représente la branche principale distante.
 
+## Intégration continue avec Jenkins
+
+Le projet DCP utilise un Jenkinsfile versionné dans Git.
+
+- Récupération automatique du code depuis GitHub
+- Construction des images backend et frontend
+- Publication des images dans Docker Hub
+- Déclenchement par scrutation SCM
+
