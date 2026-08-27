@@ -5,11 +5,15 @@
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
+    
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "db:init": "node src/db/migrate.js",
-    "db:seed": "node src/db/runSeed.js"
+    "db:seed": "node src/db/runSeed.js",
+    "test": "node --test"
   },
+
+	
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

@@ -1,4 +1,5 @@
-pipeline {
+p
+ipeline {
     agent any
 
     options {
@@ -21,27 +22,56 @@ pipeline {
                 sh 'pwd'
                 sh 'git log -1 --oneline'
                 sh 'test -f dcp-backend/Dockerfile'
+                sh 'test -f dcp-backend/test/health.test.js'
                 sh 'test -f dcp-frontend/Dockerfile'
                 sh 'test -f compose.prod.yaml'
             }
         }
 
+        stage('Tests du backend') {
+            steps {
+                sh '''
+                    docker run --rm \
+                        -v "$WORKSPACE/dcp-backend:/app" \
+                        -v /app/node_modules \
+                        -w /app \
+                        node:24-alpine \
+                        sh -c "npm ci && npm test"
+                '''
+            }
+        }
+
         stage('Construction du backend') {
             steps {
-                sh 'docker build -t "$BACKEND_IMAGE:ci-$BUILD_NUMBER" dcp-backend'
+                sh '''
+                    docker build \
+                        -t "$BACKEND_IMAGE:ci-$BUILD_NUMBER" \
+                        dcp-backend
+                '''
             }
         }
 
         stage('Construction du frontend') {
             steps {
-                sh 'docker build -t "$FRONTEND_IMAGE:ci-$BUILD_NUMBER" dcp-frontend'
+                sh '''
+                    docker build \
+                        -t "$FRONTEND_IMAGE:ci-$BUILD_NUMBER" \
+                        dcp-frontend
+                '''
             }
         }
 
         stage('Verification des images') {
             steps {
-                sh 'docker image inspect "$BACKEND_IMAGE:ci-$BUILD_NUMBER"'
-                sh 'docker image inspect "$FRONTEND_IMAGE:ci-$BUILD_NUMBER"'
+                sh '''
+                    docker image inspect \
+                        "$BACKEND_IMAGE:ci-$BUILD_NUMBER"
+                '''
+
+                sh '''
+                    docker image inspect \
+                        "$FRONTEND_IMAGE:ci-$BUILD_NUMBER"
+                '''
             }
         }
 
@@ -54,9 +84,22 @@ pipeline {
                         passwordVariable: 'DOCKERHUB_TOKEN'
                     )
                 ]) {
-                    sh 'printf "%s" "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USER" --password-stdin'
-                    sh 'docker push "$BACKEND_IMAGE:ci-$BUILD_NUMBER"'
-                    sh 'docker push "$FRONTEND_IMAGE:ci-$BUILD_NUMBER"'
+                    sh '''
+                        printf "%s" "$DOCKERHUB_TOKEN" |
+                            docker login \
+                                --username "$DOCKERHUB_USER" \
+                                --password-stdin
+                    '''
+
+                    sh '''
+                        docker push \
+                            "$BACKEND_IMAGE:ci-$BUILD_NUMBER"
+                    '''
+
+                    sh '''
+                        docker push \
+                            "$FRONTEND_IMAGE:ci-$BUILD_NUMBER"
+                    '''
                 }
             }
         }
@@ -100,7 +143,10 @@ pipeline {
                 sh '''
                     for tentative in 1 2 3 4 5 6
                     do
-                        if curl --fail --silent http://localhost:8080/api/health
+                        if curl \
+                            --fail \
+                            --silent \
+                            http://localhost:8080/api/health
                         then
                             echo
                             echo "API DCP operationnelle."
@@ -120,11 +166,13 @@ pipeline {
 
     post {
         always {
-            sh 'docker logout >/dev/null 2>&1 || true'
+            sh '''
+                docker logout >/dev/null 2>&1 || true
+            '''
         }
 
         success {
-            echo 'Les images DCP ont été construites, publiées et déployées avec succès.'
+            echo 'Tests, construction, publication et déploiement réussis.'
         }
 
         failure {
