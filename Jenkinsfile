@@ -1,5 +1,4 @@
-p
-ipeline {
+pipeline {
     agent any
 
     options {
