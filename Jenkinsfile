@@ -40,6 +40,11 @@ ipeline {
                 '''
             }
         }
+        stage('Validation du frontend') {
+            steps {
+                sh 'docker run --rm -v "$WORKSPACE/dcp-frontend:/source:ro" -w /app node:24-alpine sh -c "cp -a /source/. /app/ && npm ci && npm run build"'
+            }
+        }
 
         stage('Construction du backend') {
             steps {
